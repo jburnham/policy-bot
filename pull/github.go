@@ -259,6 +259,7 @@ func (ghc *GitHubContext) ChangedFiles() ([]*File, error) {
 					Status:    FileDeleted,
 					Additions: 0,
 					Deletions: 0,
+					Patch:     f.GetPatch(),
 				})
 			}
 
@@ -267,6 +268,7 @@ func (ghc *GitHubContext) ChangedFiles() ([]*File, error) {
 				Status:    status,
 				Additions: f.GetAdditions(),
 				Deletions: f.GetDeletions(),
+				Patch:     f.GetPatch(),
 			})
 		}
 	}

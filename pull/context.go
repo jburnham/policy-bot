@@ -129,6 +129,7 @@ type File struct {
 	Status    FileStatus
 	Additions int
 	Deletions int
+	Patch     string
 }
 
 type Commit struct {

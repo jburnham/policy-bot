@@ -113,6 +113,94 @@ func TestChangedFiles(t *testing.T) {
 			},
 		},
 	})
+
+	// Test matches
+	p.Matches = []common.Regexp{
+		common.NewCompiledRegexp(regexp.MustCompile("^\\+.*sensitive_text")),
+		common.NewCompiledRegexp(regexp.MustCompile("^-.*required_text")),
+	}
+
+	runFileTests(t, p, []FileTestCase{
+		{
+			"empty",
+			false,
+			[]*pull.File{},
+		},
+		{
+			"onlyMatches",
+			true,
+			[]*pull.File{
+				{
+					Filename: "app/client.go",
+					Status:   pull.FileAdded,
+					Patch:    "@@ -5,3 +5,8 @@ package main\n\n+// sensitive_text\n// comment",
+				},
+				{
+					Filename: "server/server.go",
+					Status:   pull.FileModified,
+					Patch:    "@@ -5,3 +5,8 @@ package main\n\n+// sensitive_text\n// comment",
+				},
+			},
+		},
+		{
+			"someMatches",
+			true,
+			[]*pull.File{
+				{
+					Filename: "app/client.go",
+					Status:   pull.FileAdded,
+					Patch:    "@@ -5,3 +5,8 @@ package main\n\n+// sensitive_text\n// comment",
+				},
+				{
+					Filename: "model/user.go",
+					Status:   pull.FileModified,
+				},
+			},
+		},
+		{
+			"noMatches",
+			false,
+			[]*pull.File{
+				{
+					Filename: "model/order.go",
+					Status:   pull.FileDeleted,
+				},
+				{
+					Filename: "model/user.go",
+					Status:   pull.FileModified,
+				},
+			},
+		},
+		{
+			"ignoreAll",
+			false,
+			[]*pull.File{
+				{
+					Filename: "app/special.go",
+					Status:   pull.FileDeleted,
+				},
+				{
+					Filename: "server/special.go",
+					Status:   pull.FileModified,
+				},
+			},
+		},
+		{
+			"ignoreSome",
+			true,
+			[]*pull.File{
+				{
+					Filename: "app/normal.go",
+					Status:   pull.FileDeleted,
+					Patch:    "@@ -5,3 +5,8 @@ package main\n\n-// required_text\n// comment",
+				},
+				{
+					Filename: "server/special.go",
+					Status:   pull.FileModified,
+				},
+			},
+		},
+	})
 }
 
 func TestOnlyChangedFiles(t *testing.T) {
@@ -323,9 +411,11 @@ type FileTestCase struct {
 
 func runFileTests(t *testing.T, p Predicate, cases []FileTestCase) {
 	ctx := context.Background()
+	t.Helper()
 
 	for _, tc := range cases {
 		t.Run(tc.Name, func(t *testing.T) {
+			t.Helper()
 			prctx := &pulltest.Context{
 				ChangedFilesValue: tc.Files,
 			}

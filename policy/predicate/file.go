@@ -15,10 +15,12 @@
 package predicate
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/palantir/policy-bot/policy/common"
 	"github.com/palantir/policy-bot/pull"
@@ -28,6 +30,7 @@ import (
 type ChangedFiles struct {
 	Paths       []common.Regexp `yaml:"paths"`
 	IgnorePaths []common.Regexp `yaml:"ignore"`
+	Matches     []common.Regexp `yaml:"matches"`
 }
 
 var _ Predicate = &ChangedFiles{}
@@ -44,7 +47,17 @@ func (pred *ChangedFiles) Evaluate(ctx context.Context, prctx pull.Context) (boo
 		}
 
 		if anyMatches(pred.Paths, f.Filename) {
-			return true, f.Filename + " was changed", nil
+			if len(pred.Matches) > 0 {
+				// iterate over each line in patch
+				scanner := bufio.NewScanner(strings.NewReader(f.Patch))
+				for scanner.Scan() {
+					if anyMatches(pred.Matches, scanner.Text()) {
+						return true, f.Filename + " was changed", nil
+					}
+				}
+			} else {
+				return true, f.Filename + " was changed", nil
+			}
 		}
 	}
 
